@@ -1,5 +1,5 @@
-On Condition
-====================
+On Condition [![Build Status](https://travis-ci.org/futurice/oncondition.svg?branch=master)](https://travis-ci.org/futurice/oncondition)
+============
 
 Run actions based on conditions.
 
