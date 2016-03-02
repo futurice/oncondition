@@ -22,6 +22,29 @@ ET_MODEL = "oncondition.Event"
 ET_WAITMODEL = "oncondition.EventWaiting"
 ```
 
+Usage
+-----
+
+An Event, that fires when any User has changes:
+
+```
+from oncondition.events import Event
+class MyEvent(Event):
+    def condition(self, instance, changes):
+        return 5>4
+
+    def action(self, instance, context):
+        self.mail(subject='[EVENT] Breakthrough!', body="--", to=self.recipients())
+        self.log("My Event fired! Recipients: [%s]"%self.recipients())
+```
+
+Register the Event:
+
+```
+from oncondition.events import event_model
+event_model().objects.get_or_create(name="my-event", cls="project.MyEvent", model="auth.User", recipients=["me@company.com,you@company.com"])
+```
+
 Delayed Events
 --------------
 
