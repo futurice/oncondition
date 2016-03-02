@@ -42,7 +42,7 @@ Register the Event:
 
 ```
 from oncondition.events import event_model
-event_model().objects.get_or_create(name="my-event", cls="project.MyEvent", model="auth.User", recipients=["me@company.com,you@company.com"])
+event_model().objects.get_or_create(name="my-event", cls="project.MyEvent", model="auth.User", recipients="me@company.com,you@company.com")
 ```
 
 Delayed Events
