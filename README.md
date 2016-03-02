@@ -3,12 +3,11 @@ On Condition
 
 Run actions based on conditions.
 
-Supports time-based delayed actions.
-
 Why?
 ----
 
-To provide transparency into 'What happens When?' and 'Is This working?', when bundling arbitrary logic into your application.
+To provide transparency into 'What happens When?' and 'Is This working?' when bundling arbitrary logic into your application.
+For example creating email notifications based on the form filledness criterias is a good use-case.
 
 Environment Settings
 --------------------
@@ -22,6 +21,13 @@ Optional Environment Settings
 ET_MODEL = "oncondition.Event"
 ET_WAITMODEL = "oncondition.EventWaiting"
 ```
+
+Delayed Events
+--------------
+
+On Condition supports any number of CONDITION_NAME -methods to run for a single Event, with their respective (optional) 'CONDITION_NAME_failure' -methods.
+Out of the box ```time_condition``` has a respective ```time_condition_failure```, that created an EventWaiting -instance. This
+allows to poll changes to an Event out of a request/response cycle. When the time_condition is met, it is marked as done.
 
 Project integration and testing
 -------------------------------

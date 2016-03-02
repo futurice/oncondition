@@ -25,14 +25,12 @@ def trigger_events(instance, changes, events=[], waiting=False):
                 instance=instance,
                 changes=changes,
                 waiting=waiting)
-        ctx = ev_instance.condition(instance, changes)
-        if ctx:
-            ev_instance.action(instance, context=ctx)
-            # also set related delayed events as processed to avoid duplicate actions
-            delayed_events = event_waiting_model().objects.filter(event_id=event.pk, uid=instance.pk)
-            if delayed_events and not delayed_events[0].processed:
-                delayed_events.update(processed=True)
-        logger.debug("{} / waiting {} | {}".format(ev, bool(waiting), bool(ctx)))
+        success, ctxs = ev_instance.on_conditions(instance, changes)
+        if success:
+            ev_instance.success(instance, ctxs)
+        else:
+            ev_instance.failure(instance, ctxs)
+        logger.debug("{}: {}".format(ev, success))
 
 def trigger_event(instance, changes, event):
     trigger_events(instance, changes, [event])
@@ -41,18 +39,50 @@ def trigger_timed_event(instance, waiting):
     trigger_events(instance, {}, [waiting.event], waiting=waiting)
 
 class Event(object):
-    def __init__(self, event, instance, changes={}, waiting=None):
+    def __init__(self, event, instance, changes={}, waiting=None, **kw):
         self.event = event
         self.instance = instance
         self.changes = changes
         self.waiting = waiting
+        self.kw = kw
+
+    def success(self, instance, ctxs):
+        self.action(instance, context=ctxs)
+        # set related delayed events as processed to avoid duplicate actions
+        delayed_events = event_waiting_model().objects.filter(event_id=self.event.pk, uid=instance.pk)
+        if delayed_events and not delayed_events[0].processed:
+            delayed_events.update(processed=True)
+
+    def failure(self, instance, ctxs):
+        for cond, ctx in ctxs.iteritems():
+            if (bool(ctx) is False) and hasattr(self, "%s_failure"%cond):
+                fail_fn = getattr(self, "%s_failure"%cond)
+                fail_fn(instance, ctx)
+
+    def conditions(self):
+        return ['condition', 'time_condition',]
+
+    def on_conditions(self, instance, context):
+        """
+        Returns:
+            tuple: A tuple of (bool, dict) containing (success, contexts) of each condition.
+                   Contexts contain {conditionName: context}, where context is Nothing (False),
+                   or Something (True). """
+        ctxs = {cond: getattr(self, cond)(instance, context) for cond in self.conditions()}
+        return (all(ctxs.values()), ctxs)
+
+    def time_condition_failure(self, instance, context, name='my-timed-event'):
+        waiting_event = event_model().objects.get(name=name)
+        event_waiting_model().objects.get_or_create(event=waiting_event, uid=instance.pk)
+
+    def time_condition(self, instance, context):
+        return True
 
     def condition(self, instance, context):
-        # True/False, or [[a],[b],[c], ...]/[] when a condition ignites multiple events
-        raise Exception("condition missing")
+        raise Exception("Event.condition() undefined")
 
     def action(self, instance, context):
-        raise Exception("event missing")
+        raise Exception("Event.action() undefined")
 
     def to_as_str(self, to):
         to = [to] if not isinstance(to, list) else to
@@ -67,3 +97,5 @@ class Event(object):
     def log(self, event):
         logger.debug(event)
 
+class TimedEvent(Event):
+    pass

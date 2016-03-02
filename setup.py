@@ -24,14 +24,14 @@ base_dir = os.path.dirname(os.path.abspath(__file__))
 
 setup(
     name = "oncondition",
-    version = "0.1",
-    description = "Event classes that fire actions on triggers for Django",
+    version = "0.2",
+    description = "Event classes that fire actions on conditions. Supports Django.",
     url = "http://github.com/futurice/oncondition",
     author = "Jussi Vaihia",
     author_email = "jussi.vaihia@futurice.com",
     packages = ["oncondition"],
     include_package_data = True,
-    keywords = 'django event trigger transparency',
+    keywords = 'django event condition transparency',
     license = 'BSD',
     install_requires = install_requires,
     cmdclass = {
