@@ -7,7 +7,7 @@ Why?
 ----
 
 To provide transparency into 'What happens When?' and 'Is This working?' when bundling arbitrary logic into your application.
-For example creating email notifications based on the form filledness criterias is a good use-case.
+For example creating email notifications based on the [form filledness criterias](https://github.com/futurice/isfilled) is a good use-case.
 
 Environment Settings
 --------------------
