@@ -1,4 +1,4 @@
 *.pyc
 tags
-dist
-*egg-info/
+/dist/
+*.egg-info/

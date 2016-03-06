@@ -12,6 +12,9 @@ from django.contrib.auth.models import Group, User
 
 from oncondition.events import Event, event_model, event_waiting_model
 
+from djangodirtyfield.mixin import changed
+from .models import Person
+
 import logging
 logging.basicConfig(level=logging.DEBUG)
 
@@ -89,6 +92,13 @@ class SampleMultiConditionsOneFalseEvent(SampleMultiConditionsEvent):
     def weather_condition(self, instance, changes):
         return False
 
+class DirtyEvent(LoggingEvent):
+    def condition(self, instance, changes):
+        return changed(changes, 'username')
+
+    def action(self, instance, context):
+        self.log("Username changed")
+
 class EventTest(BaseSuite):
     def tearDown(self):
         global MAILS, LOGS, CONDITIONS_PROCESSED
@@ -138,5 +148,20 @@ class EventTest(BaseSuite):
         user = User.objects.create(first_name="F", last_name="L")
         self.assertEqual(len(CONDITIONS_PROCESSED), 4)
         self.assertEqual(SUCCESS, False)
+
+    def test_dirtyfield_integration(self):
+        ev = event_model()
+        ev.objects.get_or_create(name="username-changed", cls="test.test_events.DirtyEvent", model="test.Person")
+        person = Person.objects.create(name="John W")
+        self.assertEqual(len(LOGS), 0)
+        person.username = "jow"
+        person.save()
+        self.assertEqual(LOGS[0], "Username changed")
+        person.age = 17
+        person.save()
+        self.assertEqual(len(LOGS), 1)
+        person.username = "johnw"
+        person.save()
+        self.assertEqual(len(LOGS), 2)
 
 

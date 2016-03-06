@@ -19,12 +19,12 @@ class TestCommand(Command):
                              'app_test_runner.py',
                              'test']))
 
-install_requires = ['celery>=3']
+install_requires = ['celery>=3', 'django-dirtyfield>=0.8',]
 base_dir = os.path.dirname(os.path.abspath(__file__))
 
 setup(
     name = "oncondition",
-    version = "0.3",
+    version = "0.4",
     description = "Event classes that fire actions on conditions. Supports Django.",
     url = "http://github.com/futurice/oncondition",
     author = "Jussi Vaihia",

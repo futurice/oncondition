@@ -1,2 +1,2 @@
 graft oncondition
-global-exclude *pyc
+global-exclude *.pyc
