@@ -11,6 +11,7 @@ from django.test.client import Client
 from django.contrib.auth.models import Group, User
 
 from oncondition.events import Event, event_model, event_waiting_model
+from oncondition.tasks import handle_timed_events
 
 from djangodirtyfield.mixin import changed
 from .models import Person
@@ -59,8 +60,8 @@ class SampleEvent(LoggingEvent):
 
 class SampleTimedEvent(LoggingEvent):
 
-    def time_condition_failure(self, instance, context, name="user-time-created"):
-        super(SampleTimedEvent, self).time_condition_failure(instance=instance, context=context, name=name)
+    def time_condition_failure(self, instance, context, name="user-time-created", conditions=None):
+        super(SampleTimedEvent, self).time_condition_failure(instance=instance, context=context, name=name, conditions=conditions)
 
     def time_condition(self, instance, changes):
         return False
@@ -71,6 +72,23 @@ class SampleTimedEvent(LoggingEvent):
     def action(self, instance, context):
         self.mail(subject='Hello Again', body="body", to=self.recipients())
         self.log("Timed Event")
+
+class SampleTimedWithConditionsEvent(SampleTimedEvent):
+    """ An Event where time_condition_failure sets up different conditions """
+    def conditions(self):
+        return ['condition','blocker_condition', 'time_condition',]
+
+    def blocker_condition(self, instance, changes):
+        return False
+
+    def time_condition(self, instance, changes):
+        return False
+
+    def time_condition_failure(self, instance, context, name="user-time-created-blocker", conditions="condition, time_condition"):
+        super(SampleTimedWithConditionsEvent, self).time_condition_failure(instance=instance,
+                context=context,
+                name=name,
+                conditions=conditions)
 
 class SampleMultiConditionsEvent(LoggingEvent):
     def conditions(self):
@@ -116,16 +134,18 @@ class EventTest(BaseSuite):
 
     def test_timed_event(self):
         ev = event_model()
-        ev.objects.get_or_create(name="user-time-created", cls="test.test_events.SampleTimedEvent", model="auth.User")
+        name = "user-time-created"
+        ev.objects.get_or_create(name=name, cls="test.test_events.SampleTimedEvent", model="auth.User")
         self.assertEqual(len(LOGS), 0)
         user = User.objects.create(first_name="F", last_name="L")
 
         self.assertEqual(event_waiting_model().objects.filter(processed=False).count(), 1)
-        self.assertEqual(ev.objects.get(name="user-time-created").waitings.count(), 1)
+        self.assertEqual(ev.objects.get(name=name).waitings.count(), 1)
         self.assertEqual(len(LOGS), 0)
 
         def time_condition(self, instance, changes):
             return True
+        orig_time_condition = SampleTimedEvent.time_condition
         SampleTimedEvent.time_condition = time_condition
 
         user.save()
@@ -133,8 +153,67 @@ class EventTest(BaseSuite):
         self.assertEqual(MAILS[0][0], "Hello Again")
         self.assertEqual(LOGS[0], "Timed Event")
         self.assertEqual(event_waiting_model().objects.filter(processed=False).count(), 0)
-        self.assertEqual(ev.objects.get(name="user-time-created").waitings.count(), 1)
-        self.assertEqual(list(ev.objects.get(name="user-time-created").waitings.filter(processed=False)), [])
+        self.assertEqual(ev.objects.get(name=name).waitings.count(), 1)
+        self.assertEqual(list(ev.objects.get(name=name).waitings.filter(processed=False)), [])
+
+        SampleTimedEvent.time_condition = orig_time_condition
+
+    def test_timed_event_conditions(self):
+        ev = event_model()
+        name = "user-time-created-blocker"
+        ev.objects.get_or_create(name=name, cls="test.test_events.SampleTimedWithConditionsEvent", model="auth.User")
+        self.assertEqual(len(LOGS), 0)
+        user = User.objects.create(first_name="F", last_name="L")
+
+        self.assertEqual(event_waiting_model().objects.filter(processed=False).count(), 1)
+        self.assertEqual(ev.objects.get(name=name).waitings.count(), 1)
+        self.assertEqual(len(LOGS), 0)
+
+        def time_condition(self, instance, changes):
+            return True
+        orig_time_condition = SampleTimedEvent.time_condition
+        SampleTimedWithConditionsEvent.time_condition = time_condition
+
+        # request doesnt processed Waiting's
+        user.save()
+
+        self.assertEqual(len(LOGS), 0)
+        self.assertEqual(event_waiting_model().objects.filter(processed=False).count(), 1)
+
+        # process Waitings'
+        handle_timed_events.delay()
+
+        self.assertEqual(len(LOGS), 1)
+        self.assertEqual(event_waiting_model().objects.filter(processed=False).count(), 0)
+
+        SampleTimedWithConditionsEvent.time_condition = orig_time_condition
+
+    def test_timed_event_via_task(self):
+        self.assertEqual(event_waiting_model().objects.all().count(), 0)
+        ev = event_model()
+        name = "user-time-created"
+        ev.objects.get_or_create(name=name, cls="test.test_events.SampleTimedEvent", model="auth.User")
+        self.assertEqual(len(LOGS), 0)
+        user = User.objects.create(first_name="F", last_name="L")
+
+        self.assertEqual(event_waiting_model().objects.filter(processed=False).count(), 1)
+        self.assertEqual(ev.objects.get(name=name).waitings.count(), 1)
+        self.assertEqual(len(LOGS), 0)
+
+        def time_condition(self, instance, changes):
+            return True
+        orig_time_condition = SampleTimedEvent.time_condition
+        SampleTimedEvent.time_condition = time_condition
+
+        handle_timed_events.delay()
+
+        self.assertEqual(MAILS[0][0], "Hello Again")
+        self.assertEqual(LOGS[0], "Timed Event")
+        self.assertEqual(event_waiting_model().objects.filter(processed=False).count(), 0)
+        self.assertEqual(ev.objects.get(name=name).waitings.count(), 1)
+        self.assertEqual(list(ev.objects.get(name=name).waitings.filter(processed=False)), [])
+
+        SampleTimedEvent.time_condition = orig_time_condition
 
     def test_multi_condition_event(self):
         ev = event_model()

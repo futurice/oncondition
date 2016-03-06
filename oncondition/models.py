@@ -33,7 +33,11 @@ class EventWaiting(models.Model):
             on_delete=models.SET_NULL,
             related_name="waitings")
     uid = models.PositiveIntegerField()
+    conditions = models.CharField(max_length=255, null=True, blank=True)
     processed = models.BooleanField(default=False, db_index=True)
+
+    def get_conditions(self):
+        return filter(None, map(lambda s: s.strip(), self.conditions.split(','))) if self.conditions else []
 
     def __unicode__(self):
         return u"(%s, %s)"%(self.event_id, self.uid)

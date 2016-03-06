@@ -62,18 +62,26 @@ class Event(object):
     def conditions(self):
         return ['condition', 'time_condition',]
 
+    def _conditions(self):
+        conditions = self.conditions()
+        if self.waiting:
+            conditions = self.waiting.get_conditions() or conditions
+        return conditions
+
     def on_conditions(self, instance, context):
         """
         Returns:
             tuple: A tuple of (bool, dict) containing (success, contexts) of each condition.
                    Contexts contain {conditionName: context}, where context is Nothing (False),
                    or Something (True). """
-        ctxs = {cond: getattr(self, cond)(instance, context) for cond in self.conditions()}
+        ctxs = {cond: getattr(self, cond)(instance, context) for cond in self._conditions()}
         return (all(ctxs.values()), ctxs)
 
-    def time_condition_failure(self, instance, context, name='my-timed-event'):
-        waiting_event = event_model().objects.get(name=name)
-        event_waiting_model().objects.get_or_create(event=waiting_event, uid=instance.pk)
+    def time_condition_failure(self, instance, context, name='my-timed-event', conditions=None):
+        event = event_model().objects.get(name=name)
+        event_waiting_model().objects.get_or_create(event=event,
+                                                    uid=instance.pk,
+                                                    conditions=conditions,)
 
     def time_condition(self, instance, context):
         return True

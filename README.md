@@ -52,6 +52,15 @@ On Condition supports any number of CONDITION_NAME -methods to run for a single 
 Out of the box ```time_condition``` has a respective ```time_condition_failure```, that creates an EventWaiting -instance. This
 allows to poll changes to an Event out of a request/response cycle. When the time_condition is met, it is marked as done.
 
+```
+    CELERYBEAT_SCHEDULE = {
+        'waiting-events': {
+            'task': 'oncondition.tasks.handle_timed_events',
+            'schedule': timedelta(minutes=60),
+        }
+    }
+```
+
 Project integration and testing
 -------------------------------
 
