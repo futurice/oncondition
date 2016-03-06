@@ -4,7 +4,7 @@ from django.contrib import admin
 from oncondition.models import Event, EventWaiting
 
 class EventAdmin(admin.ModelAdmin):
-    list_display = ['name', 'cls', 'model','waiting']
+    list_display = ['name', 'cls', 'model',]
 
 class EventWaitingAdmin(admin.ModelAdmin):
     list_display = ['event', 'processed',]

@@ -9,8 +9,7 @@ app = celery_installation()
 
 @app.task
 def handle_events(label, pk, changes):
-    event = event_model()
-    events = filter(lambda e: not e.waiting, event.objects.filter(model=label))
+    events = event_model().objects.filter(model=label)
     model = apps.get_model(label)
     trigger_events(instance=model.objects.get(pk=pk), changes=changes, events=events)
 

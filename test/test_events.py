@@ -59,7 +59,7 @@ class SampleEvent(LoggingEvent):
 
 class SampleTimedEvent(LoggingEvent):
 
-    def time_condition_failure(self, instance, context, name="user-time-createdA"):
+    def time_condition_failure(self, instance, context, name="user-time-created"):
         super(SampleTimedEvent, self).time_condition_failure(instance=instance, context=context, name=name)
 
     def time_condition(self, instance, changes):
@@ -116,11 +116,12 @@ class EventTest(BaseSuite):
 
     def test_timed_event(self):
         ev = event_model()
-        ev.objects.get_or_create(name="user-time-createdA", cls="test.test_events.SampleTimedEvent",model="auth.User")
+        ev.objects.get_or_create(name="user-time-created", cls="test.test_events.SampleTimedEvent", model="auth.User")
         self.assertEqual(len(LOGS), 0)
         user = User.objects.create(first_name="F", last_name="L")
 
         self.assertEqual(event_waiting_model().objects.filter(processed=False).count(), 1)
+        self.assertEqual(ev.objects.get(name="user-time-created").waitings.count(), 1)
         self.assertEqual(len(LOGS), 0)
 
         def time_condition(self, instance, changes):
@@ -132,6 +133,8 @@ class EventTest(BaseSuite):
         self.assertEqual(MAILS[0][0], "Hello Again")
         self.assertEqual(LOGS[0], "Timed Event")
         self.assertEqual(event_waiting_model().objects.filter(processed=False).count(), 0)
+        self.assertEqual(ev.objects.get(name="user-time-created").waitings.count(), 1)
+        self.assertEqual(list(ev.objects.get(name="user-time-created").waitings.filter(processed=False)), [])
 
     def test_multi_condition_event(self):
         ev = event_model()

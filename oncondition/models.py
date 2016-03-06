@@ -5,14 +5,13 @@ from django.conf import settings
 from django.db import models
 from django.db.models import Count
 
-from oncondition.events import CACHE_KEY
+from oncondition.events import CACHE_KEY, event_waiting_model
 
 class Event(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     name = models.CharField(max_length=255, unique=True)
     cls = models.CharField(max_length=255)
     model = models.CharField(max_length=255, db_index=True)
-    waiting = models.BooleanField(default=False)
     recipients = models.CharField(max_length=255, blank=True, null=True)
 
     @classmethod
@@ -28,7 +27,11 @@ class Event(models.Model):
 
 class EventWaiting(models.Model):
     created = models.DateTimeField(auto_now_add=True)
-    event = models.ForeignKey('oncondition.Event', null=True, blank=True, on_delete=models.SET_NULL)
+    event = models.ForeignKey('oncondition.Event',
+            null=True,
+            blank=True,
+            on_delete=models.SET_NULL,
+            related_name="waitings")
     uid = models.PositiveIntegerField()
     processed = models.BooleanField(default=False, db_index=True)
 
