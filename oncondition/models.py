@@ -2,7 +2,7 @@
 from django.apps import apps
 from django.core.cache import cache
 from django.conf import settings
-from django.db import models
+from django.db import models, ProgrammingError
 from django.db.models import Count
 
 from oncondition.events import CACHE_KEY, event_waiting_model
@@ -18,8 +18,11 @@ class Event(models.Model):
     def models_with_events(self):
         result = cache.get(CACHE_KEY)
         if result is None:
-            result = [k['model'] for k in self.objects.values('model').annotate(cnt=Count('id'))]
-            cache.set(CACHE_KEY, result)
+            try:
+                result = [k['model'] for k in self.objects.values('model').annotate(cnt=Count('id'))]
+                cache.set(CACHE_KEY, result)
+            except ProgrammingError: # post_save and initial migrations
+                result = []
         return [apps.get_model(m) for m in result]
 
     def __unicode__(self):
