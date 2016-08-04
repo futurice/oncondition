@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 from django.apps import apps
 from django.core import management
+from django.core.exceptions import ObjectDoesNotExist
 
 from oncondition.events import trigger_events, trigger_timed_event, event_model, event_waiting_model
 from oncondition.util import import_string, celery_installation
@@ -18,5 +19,11 @@ def handle_timed_events():
     waiting_model = event_waiting_model()
     for ev in waiting_model.objects.filter(processed=False):
         model = apps.get_model(ev.event.model)
-        trigger_timed_event(instance=model.objects.get(pk=ev.uid),
-                            waiting=ev)
+        try:
+            instance = model.objects.get(pk=ev.uid)
+        except ObjectDoesNotExist as e:
+            ev.update(processed=True)
+            continue
+        trigger_timed_event(instance=instance, waiting=ev)
+
+
