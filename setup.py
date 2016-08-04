@@ -24,7 +24,7 @@ base_dir = os.path.dirname(os.path.abspath(__file__))
 
 setup(
     name = "oncondition",
-    version = "0.7",
+    version = "0.8",
     description = "Event classes that fire actions on conditions. Supports Django.",
     url = "http://github.com/futurice/oncondition",
     author = "Jussi Vaihia",
